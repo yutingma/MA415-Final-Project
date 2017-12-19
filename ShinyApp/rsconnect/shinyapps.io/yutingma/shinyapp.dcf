@@ -1,0 +1,10 @@
+name: shinyapp
+title:
+username:
+account: yutingma
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 250129
+bundleId: 1142121
+url: https://yutingma.shinyapps.io/shinyapp/
+when: 1513658055.67498
