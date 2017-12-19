@@ -1,0 +1,336 @@
+---
+title: "Disney"
+author: "Yuting Ma"
+date: "12/18/2017"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+require(dplyr)
+require(tools)
+require(ggplot2)
+require(ggmap)
+require(grid)
+require(tidyverse)
+require(tidytext)
+require(stringr)
+require(wordcloud)
+require(leaflet)
+```
+
+# I. Project Overview
+Branding, as an important aspect of a company's value, develops from advertising, product diferrenciation, customer loyalty and many factors. As the social media develops, consumers' perception of the brand has become an increasingly important factor for valueing a brand, as well as for managment to monitor their performance and apply marketing strategy. This project analyzes the consumers' perception for Walt Disney Company using Tweeter. 
+
+# II. Company Overview
+
+The Walt Disney Company is an American diversified multinational mass media and entertainment conglomerate, and is the world's second largest media conglomerate in terms of revenue. Some of the big events for the company this year is the acquisition of part of 21st Centry Fox, the announcement of the Chiness actress Yifei Liu as cast for the Mulan movie, and the release of the new movie Coco. The project captures and analyzes 15,000 of the golbal tweets in Enlish with keyword "Disney" as of December 14, 2017. 
+
+
+# III. Data Collection and Cleaning
+
+## Data Collection
+
+The tweeter data was collected with the TwitterR package, which searches for Tweets and the user information through Tweeter App. 
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Twitter App Authorization
+
+api_key <- "****"
+api_secret <- "****"
+access_token <- "****"
+access_token_secret <- "****"
+
+setup_twitter_oauth(api_key, 
+                     api_secret, 
+                     access_token, 
+                     access_token_secret)
+
+requestURL <- "https://api.twitter.com/oauth/request_token"
+accessURL <- "https://api.twitter.com/oauth/access_token"
+authURL <- "https://api.twitter.com/oauth/authorize"
+consumerKey <- 	"LFNRqX5i1PkB69SjEEncXWloq"
+consumerSecret <- "4sDHqY6aLm7PRfJLxpq6GsWqphZxzX3dXLjssSLXYhO8wPwL3F"
+my_oauth <- OAuthFactory$new(consumerKey = consumerKey, consumerSecret = consumerSecret, 
+                             requestURL = requestURL, accessURL = accessURL, authURL = authURL)
+my_oauth$handshake(cainfo = system.file("CurlSSL", "cacert.pem", package = "RCurl"))
+save(my_oauth, file = "my_oauth.Rdata")
+
+```
+
+The data collection process starts with searching for any tweets with keyword "Disney" from November 11, 2017. The project tries to capture the time trend of consumers' perception, however, due to the search limits imposed by Disney, the tweets are concentrated on the date of December 14, 2017. 
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Collect and Store Tweets Data
+
+tweets <- searchTwitter('Disney', 
+                       since = '2017-11-01', 
+                       lang = 'en', 
+                       n = 15000) 
+
+tweets.df <- twListToDF(tweets)
+
+write.csv(tweets.df, "tweets.csv") 
+```
+
+After obtaining tweets data, the user names were used to get user information and espeically the registered location for their account and the coordinates for it.  
+
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Lookup User Information
+
+tweets.df <- read.csv("tweets.csv")
+tweets.df$screenName <- as.character(tweets.df$screenName)
+
+userinfo <- lookupUsers(tweets.df$screenName)  # Batch lookup of user info
+userFrame <- twListToDF(userinfo)
+userFrame$screenName <- as.character(userFrame$screenName)
+
+```
+
+# Data Cleanning
+User generated content can bring problems to the data cleaning process. In the user location vector, some of the information is written in non-English character, so to fitler out the invalid data, I used the "tools" package to remove useres with non-ASCII characters. 
+
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Clean User Information
+
+remove <- data_frame(location = showNonASCII(userFrame$location), 
+                     remove = TRUE)
+
+userFrame <- userFrame %>% anti_join(remove)
+```
+
+
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Lookup and Store Uers Location Info
+
+locations <- geocode(userFrame$location)
+locations$screenName <- userFrame$screenName
+locations$location <- userFrame$location
+
+write.csv(locations, "userinfo.csv")
+
+tweets.df <- left_join(x = tweets.df, y = locations, by= "screenName")
+
+write.csv(tweets.df, "tweets+local.csv")
+```
+
+
+
+
+# Data Summary
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Retrieve and Format Tweets and Loation Data
+
+tweets <- read.csv("tweets+local.csv")
+tweets.df <- data_frame(text = as.character(tweets$text), 
+                        screenName = as.character(tweets$screenName), 
+                        retweetCount = as.numeric(tweets$retweetCount), 
+                        lon = as.numeric(tweets$lon), 
+                        lat = as.numeric(tweets$lat), 
+                        location = as.character(tweets$location))
+
+locations <- read.csv("locations.csv")
+userinfo <- data_frame(user = as.character(locations$screenName), 
+                      lon = as.numeric(locations$lon), 
+                      lat = as.numeric(locations$lat))
+```
+
+The data collection started with 150,000 entries of raw tweets data, and ****** 
+
+```{r}
+# Data Summary
+tweets.df %>% 
+#   summarise(
+#     Num_Tweets = count(retweetCount),
+#             Avg_Num_Retweet = mean(retweetCount), 
+#             Num_Locations = count(lon)
+#             ) -> s
+# s
+
+```
+
+The following graph maps out the distribution of the gathered tweets data. As shown in the mapp, most of the data points tend to cluster in the US and Europe. This is most likely casued by the official language used in the different parts of the world. So the analysis will further focus on the consumer perception of the Disney brand in these two locations. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+map.data <- map_data("world")   
+points <- data.frame(x = tweets.df$lon,  
+                     y = tweets.df$lat)
+
+ggplot(map.data) + 
+  geom_map(aes(map_id = region),  
+           map = map.data,  
+           fill = "white",             
+           color = "grey20", size = 0.25) + 
+  expand_limits(x = map.data$long, y = map.data$lat) +            
+  theme(axis.line = element_blank(),  
+        axis.text = element_blank(),  
+        axis.ticks = element_blank(),                     
+        axis.title = element_blank(),  
+        panel.background = element_blank(),  
+        panel.border = element_blank(),                     
+        panel.grid.major = element_blank(), 
+        plot.background = element_blank(),                     
+        plot.margin = unit(0 * c( -1.5, -1.5, -1.5, -1.5), "lines")) + 
+  geom_point(data = points, 
+             aes(x = x, y = y), size = 3, color = "darkblue")
+```
+
+
+
+
+## Text Analysis
+Text analysis further analyzes the occurence of words in the collected tweets, and thusn to analyze consumers' attitude towards the Disney brand. 
+
+# Word Frequencies and Word Cloud
+
+The text analysis first started by sparating each tweet into single word, then analyze the frequencies of occurences of different words. 
+
+```{r, message=FALSE, warning=FALSE}
+text.df <- data_frame(user = tweets.df$screenName,
+                      text = tweets.df$text, 
+                      location = tweets.df$location)
+
+tidy.text <- unnest_tokens(text.df, word, text)
+
+custom_stop_words <- bind_rows(data_frame(word = c("disney", "https", "disney's", "t.co", "rt", "6aue21xvif", "it's", "deal", "hgpmzy40z", "qbfzwwcjw", "40", "75", "it", "set", "assets"), 
+                                          lexicon = "custom"), 
+                               stop_words)
+
+tidy.text <- tidy.text %>% anti_join(custom_stop_words)
+
+word.freq <- tidy.text %>% count(word, sort=TRUE)
+
+word.freq %>% 
+  filter(n > 550) %>%
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n)) + 
+  geom_col() + 
+  xlab(NULL) + 
+  coord_flip() 
+
+tidy.text %>% 
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+```
+
+
+# Sentiment Analysis
+
+Sentiment analysis is used to to estimat the overall positivity of consumers' attitude towards Disney. The sentiment scores are calculated as the count of positive key words minus the count of negative key words as indicated in the word list "bing". 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Calculate Sentiment Score for Each User
+get_sentiments("afinn")
+get_sentiments("bing")
+get_sentiments("nrc")
+
+sentiment <- tidy.text %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(user, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>% 
+  mutate(sentiment = positive - negative) 
+
+total <- left_join(sentiment, userinfo, by="user")
+write.csv(total, "totalsentiment.csv")
+```
+
+
+After calculating sentiment scores for each Tweeter user, the following grphs were made to analyze the overall sentiment of consumer in the US and Europe. 
+
+Each Tweeter user is mapped so that the size of the point represents the sentiment score. As it is shown in the map, US consumers outnumbered the Europe consumers, and generally have a higher sentiment score, which indicates that Disney is more recognized in the US than in Europe. 
+
+```{r, message=FALSE, warning=FALSE}
+# Sentiment In the US and Europe
+USMap <- get_googlemap("United States", zoom = 4, maptype = "roadmap", crop = FALSE)
+US <- ggmap(USMap) +
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+US
+
+EUMap <- get_googlemap("Europe", zoom = 4, maptype = "roadmap", crop = FALSE)
+EU <- ggmap(EUMap) +
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+EU
+
+```
+
+
+
+To analyze the sentiment score across the US, 
+
+```{r, message=FALSE, warning=FALSE}
+# Sentiment Accross US
+CAMap <- get_googlemap("California", zoom = 6, maptype = "roadmap", crop = FALSE)
+CA <- ggmap(CAMap) +
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+CA
+
+FLMap <- get_googlemap("Florida", zoom = 6, maptype = "roadmap", crop = FALSE)
+FL <- ggmap(FLMap) +
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+FL
+
+
+NYMap <- get_googlemap("New York", zoom = 6, maptype = "roadmap", crop = FALSE)
+NY <- ggmap(NYMap) +
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+NY
+
+```
+
+
+```{r}
+# Graph
+pal1 <- colorNumeric(palette = "Oranges",domain = total$sentiment)
+
+leaflet(total) %>% addTiles() %>% 
+#  setView(lng = -103.85, lat = 37.45, zoom = 3) %>% 
+  addProviderTiles("Esri.WorldImagery") %>% 
+  addCircleMarkers(
+    lng = total$lon, 
+    lat = total$lat, 
+    radius = 1.2,
+    color = pal1(total$sentiment), 
+    opacity = 0.6, 
+    fill = TRUE, 
+    fillColor = pal1(total$sentiment), 
+    stroke = TRUE, 
+    fillOpacity = 0.6, 
+    label = NULL)
+```
+
+
+
+
+```{r}
+pal1 <- colorNumeric(palette = "Oranges",domain = total$sentiment)
+
+leaflet(total) %>% addTiles() %>% 
+  setView( lng = 39.63, lat = -95.12, zoom = 5 ) %>% 
+  addProviderTiles("Esri.WorldImagery") %>% 
+  addCircleMarkers(
+    lng = total$lon, 
+    lat = total$lat, 
+    radius = 1.2,
+    color = pal1(total$sentiment), 
+    opacity = 0.6, 
+    fill = TRUE, 
+    fillColor = pal1(total$sentiment), 
+    stroke = TRUE, 
+    fillOpacity = 0.6, 
+    label = NULL)
+```
+
+
+
+
+
