@@ -1,0 +1,12 @@
+name: us_sentiment
+title: US Sentiment
+username:
+account: yutingma
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 250181
+bundleId: 1142343
+url: https://yutingma.shinyapps.io/us_sentiment/
+when: 1513668818.19378
+asMultiple: FALSE
+asStatic: FALSE

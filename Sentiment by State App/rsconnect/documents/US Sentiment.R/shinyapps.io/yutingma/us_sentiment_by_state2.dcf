@@ -1,0 +1,12 @@
+name: us_sentiment_by_state2
+title: US Sentiment by State
+username:
+account: yutingma
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 250183
+bundleId: 1142351
+url: https://yutingma.shinyapps.io/us_sentiment_by_state2/
+when: 1513669383.92549
+asMultiple: FALSE
+asStatic: FALSE

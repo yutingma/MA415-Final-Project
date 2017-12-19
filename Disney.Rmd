@@ -148,7 +148,7 @@ The data collection started with 150,000 entries of raw tweets data, and ******
 
 ```{r}
 # Data Summary
-tweets.df %>% 
+# tweets.df %>% 
 #   summarise(
 #     Num_Tweets = count(retweetCount),
 #             Avg_Num_Retweet = mean(retweetCount), 
@@ -181,7 +181,8 @@ ggplot(map.data) +
         plot.background = element_blank(),                     
         plot.margin = unit(0 * c( -1.5, -1.5, -1.5, -1.5), "lines")) + 
   geom_point(data = points, 
-             aes(x = x, y = y), size = 3, color = "darkblue")
+             aes(x = x, y = y), size = 3, color = "darkblue") + 
+  ggtitle("Tweets Data Geographic Distribution")
 ```
 
 
@@ -194,7 +195,9 @@ Text analysis further analyzes the occurence of words in the collected tweets, a
 
 The text analysis first started by sparating each tweet into single word, then analyze the frequencies of occurences of different words. 
 
-```{r, message=FALSE, warning=FALSE}
+For word cloud, I only care about the tweets people post. To get all words included in the tweets, I used the function unnest_tokens. However there should be nonsense words that do not needed to be analyzed, I use stop_words to eliminate those words. In addition, I add custom stop words specific to this project, like “disney”, which is of course high frequency to this topic, and other nonsense words appear in the list. According to the word cloud due to the data I just filtered out, it seems that 21st Century Fox is the hottest topic, which relates to the acquisition. Other high frequency words are like “star”, “christmas”, “wars”, “beautiful”, and so on. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 text.df <- data_frame(user = tweets.df$screenName,
                       text = tweets.df$text, 
                       location = tweets.df$location)
@@ -227,7 +230,6 @@ tidy.text %>%
 
 Sentiment analysis is used to to estimat the overall positivity of consumers' attitude towards Disney. The sentiment scores are calculated as the count of positive key words minus the count of negative key words as indicated in the word list "bing". 
 
-
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Calculate Sentiment Score for Each User
 get_sentiments("afinn")
@@ -249,46 +251,50 @@ After calculating sentiment scores for each Tweeter user, the following grphs we
 
 Each Tweeter user is mapped so that the size of the point represents the sentiment score. As it is shown in the map, US consumers outnumbered the Europe consumers, and generally have a higher sentiment score, which indicates that Disney is more recognized in the US than in Europe. 
 
-```{r, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Sentiment In the US and Europe
 USMap <- get_googlemap("United States", zoom = 4, maptype = "roadmap", crop = FALSE)
 US <- ggmap(USMap) +
-  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment) +
+  ggtitle("Sentiment Score in the United States")
 US
 
 EUMap <- get_googlemap("Europe", zoom = 4, maptype = "roadmap", crop = FALSE)
 EU <- ggmap(EUMap) +
-  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment) +
+  ggtitle("Sentiment Score in Europe")
 EU
 
 ```
 
 
 
-To analyze the sentiment score across the US, 
+To analyze the sentiment score across the US, the following graphs are drawn to compare sentiment scores acrosse different states. 
 
-```{r, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Sentiment Accross US
 CAMap <- get_googlemap("California", zoom = 6, maptype = "roadmap", crop = FALSE)
 CA <- ggmap(CAMap) +
-  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment) +
+  ggtitle("Sentiment Score in California")
 CA
 
 FLMap <- get_googlemap("Florida", zoom = 6, maptype = "roadmap", crop = FALSE)
 FL <- ggmap(FLMap) +
-  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment) +
+  ggtitle("Sentiment Score in Florida")
 FL
 
 
 NYMap <- get_googlemap("New York", zoom = 6, maptype = "roadmap", crop = FALSE)
 NY <- ggmap(NYMap) +
-  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment)
+  geom_point(aes(x=lon, y=lat), col=ifelse(((total$sentiment>=0)),"brown1", "blue"), data=total, alpha=0.4, size=total$sentiment) +
+  ggtitle("Sentiment Score in New York")
 NY
-
 ```
 
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Graph
 pal1 <- colorNumeric(palette = "Oranges",domain = total$sentiment)
 
@@ -311,7 +317,7 @@ leaflet(total) %>% addTiles() %>%
 
 
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 pal1 <- colorNumeric(palette = "Oranges",domain = total$sentiment)
 
 leaflet(total) %>% addTiles() %>% 
@@ -330,7 +336,8 @@ leaflet(total) %>% addTiles() %>%
     label = NULL)
 ```
 
-
-
-
+Also, to customise the graph and accomodate more flexible query, a Shiny App is made from the sentiment scores at the following link: 
+https://yutingma.shinyapps.io/us_sentiment/
+https://yutingma.shinyapps.io/sentiment_by_state/ 
+(For the Sentiment by State Interactive Chart, the maps for 50 states take some time to load, so error message may occur at the beginning. )
 
